@@ -70,6 +70,21 @@ function animateValue(element, start, end, duration) {
     window.requestAnimationFrame(step);
 }
 
+// Stats counter animation for decimal numbers
+function animateValueDecimal(element, start, end, duration) {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        const value = (progress * (end - start) + start).toFixed(1);
+        element.textContent = value + (element.dataset.suffix || '');
+        if (progress < 1) {
+            window.requestAnimationFrame(step);
+        }
+    };
+    window.requestAnimationFrame(step);
+}
+
 // Animate stats when they come into view
 const statsObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -77,11 +92,31 @@ const statsObserver = new IntersectionObserver((entries) => {
             entry.target.dataset.animated = 'true';
             const statNumbers = entry.target.querySelectorAll('.stat-number');
             statNumbers.forEach(stat => {
-                const text = stat.textContent;
-                let endValue = parseInt(text.replace(/\D/g, ''));
-                const suffix = text.replace(/[\d,]/g, '');
-                stat.dataset.suffix = suffix;
-                animateValue(stat, 0, endValue, 2000);
+                const text = stat.textContent.trim();
+
+                // Handle different number formats
+                if (text.includes('%')) {
+                    // For percentages like 99.9%
+                    const numValue = parseFloat(text.replace('%', ''));
+                    stat.dataset.suffix = '%';
+                    animateValueDecimal(stat, 0, numValue, 2000);
+                } else if (text.includes('K')) {
+                    // For thousands like 10K+
+                    const numValue = parseInt(text.replace(/\D/g, ''));
+                    stat.dataset.suffix = 'K+';
+                    animateValue(stat, 0, numValue, 2000);
+                } else if (text.includes('+')) {
+                    // For numbers with + like 500+
+                    const numValue = parseInt(text.replace(/\D/g, ''));
+                    stat.dataset.suffix = '+';
+                    animateValue(stat, 0, numValue, 2000);
+                } else {
+                    // For plain numbers
+                    const numValue = parseInt(text.replace(/\D/g, ''));
+                    const suffix = text.replace(/[\d,]/g, '');
+                    stat.dataset.suffix = suffix;
+                    animateValue(stat, 0, numValue, 2000);
+                }
             });
         }
     });
